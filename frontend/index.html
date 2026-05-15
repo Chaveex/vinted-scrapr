@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vinted Card Scraper</title>
+  <style>
+    :root {
+      --bg:        #07111f;
+      --bg2:       #0d1b2e;
+      --bg3:       #0f2340;
+      --teal:      #00c9a7;
+      --teal2:     #00a3cc;
+      --blue:      #0891b2;
+      --blue2:     #0e4d6e;
+      --glow:      rgba(0, 201, 167, 0.25);
+      --glow2:     rgba(8, 145, 178, 0.20);
+      --text:      #e2f0f5;
+      --text2:     #8ab4c4;
+      --border:    rgba(0, 201, 167, 0.18);
+      --border2:   rgba(8, 145, 178, 0.18);
+      --glass:     rgba(13, 27, 46, 0.75);
+      --metal1:    linear-gradient(135deg, #00c9a7 0%, #0891b2 50%, #0e5f88 100%);
+      --metal2:    linear-gradient(135deg, #0d1b2e 0%, #0f2f4a 50%, #0d1b2e 100%);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0, 201, 167, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 30% at 80% 110%, rgba(8, 145, 178, 0.10) 0%, transparent 70%);
+    }
+
+    header {
+      padding: 2rem 1.5rem 1rem;
+      text-align: center;
+      position: relative;
+    }
+
+    header::after {
+      content: '';
+      display: block;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--teal), var(--blue2), transparent);
+      margin-top: 1.5rem;
+      opacity: 0.6;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: var(--metal1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      display: inline-block;
+    }
+
+    .logo span {
+      font-weight: 300;
+      opacity: 0.8;
+    }
+
+    .subtitle {
+      color: var(--text2);
+      font-size: 0.85rem;
+      margin-top: 0.35rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 4rem;
+    }
+
+    /* Search bar */
+    .search-wrap {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 30px var(--glow2), inset 0 1px 0 rgba(255,255,255,0.05);
+      margin-bottom: 2rem;
+    }
+
+    .search-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.65rem;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .url-input {
+      flex: 1;
+      background: rgba(7, 17, 31, 0.8);
+      border: 1px solid var(--border2);
+      border-radius: 9px;
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 0.7rem 1rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .url-input::placeholder { color: var(--text2); opacity: 0.6; }
+
+    .url-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(0, 201, 167, 0.12);
+    }
+
+    .btn-scrape {
+      background: var(--metal1);
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 0.7rem 1.6rem;
+      transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 2px 14px rgba(0, 201, 167, 0.3);
+      white-space: nowrap;
+    }
+
+    .btn-scrape:hover { opacity: 0.9; box-shadow: 0 4px 20px rgba(0, 201, 167, 0.45); }
+    .btn-scrape:active { transform: scale(0.98); }
+    .btn-scrape:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Status */
+    .status {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text2);
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(0,201,167,0.15);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: rgba(220, 38, 38, 0.08);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      border-radius: 10px;
+      color: #fca5a5;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    /* Result */
+    #result { display: none; }
+
+    /* Card parsed info */
+    .card-info {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 40px var(--glow), inset 0 1px 0 rgba(255,255,255,0.05);
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-info::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--metal1);
+    }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal2);
+      margin-bottom: 1rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.85rem;
+    }
+
+    .card-field {
+      background: rgba(7, 17, 31, 0.6);
+      border: 1px solid var(--border2);
+      border-radius: 9px;
+      padding: 0.75rem 0.9rem;
+    }
+
+    .field-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 0.3rem;
+    }
+
+    .field-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .field-value.accent { color: var(--teal); }
+    .field-value.empty { color: var(--text2); font-weight: 400; font-style: italic; font-size: 0.8rem; }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.3rem;
+    }
+
+    .tag {
+      background: rgba(0, 201, 167, 0.12);
+      border: 1px solid rgba(0, 201, 167, 0.25);
+      border-radius: 5px;
+      color: var(--teal);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      letter-spacing: 0.04em;
+    }
+
+    .tag.blue {
+      background: rgba(8, 145, 178, 0.12);
+      border-color: rgba(8, 145, 178, 0.25);
+      color: var(--teal2);
+    }
+
+    /* Listing block */
+    .listing-block {
+      background: var(--glass);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 24px var(--glow2), inset 0 1px 0 rgba(255,255,255,0.04);
+      overflow: hidden;
+    }
+
+    .listing-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border2);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .listing-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1.4;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .price-badge {
+      background: var(--metal1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1.3rem;
+      font-weight: 700;
+      padding: 0.3rem 1rem;
+      white-space: nowrap;
+      box-shadow: 0 2px 12px rgba(0,201,167,0.3);
+    }
+
+    .photos-strip {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border2);
+      scrollbar-width: thin;
+      scrollbar-color: var(--blue2) transparent;
+    }
+
+    .photos-strip img {
+      border-radius: 9px;
+      cursor: pointer;
+      height: 180px;
+      width: auto;
+      object-fit: cover;
+      border: 1px solid var(--border2);
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .photos-strip img:hover {
+      border-color: var(--teal);
+      box-shadow: 0 0 16px var(--glow);
+      transform: scale(1.03);
+    }
+
+    .listing-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0;
+    }
+
+    .meta-item {
+      padding: 0.85rem 1.25rem;
+      border-right: 1px solid var(--border2);
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .meta-item:nth-child(4n) { border-right: none; }
+
+    .meta-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 0.25rem;
+    }
+
+    .meta-value {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .listing-desc {
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid var(--border2);
+    }
+
+    .listing-desc p {
+      font-size: 0.88rem;
+      color: var(--text2);
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .listing-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .seller-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .seller-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--metal1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .seller-name { font-size: 0.88rem; font-weight: 600; }
+    .seller-sub { font-size: 0.75rem; color: var(--text2); }
+
+    .stats {
+      display: flex;
+      gap: 1.25rem;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text2);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .open-link {
+      background: rgba(0, 201, 167, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--teal);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.45rem 0.9rem;
+      text-decoration: none;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+
+    .open-link:hover {
+      background: rgba(0, 201, 167, 0.15);
+      box-shadow: 0 0 10px var(--glow);
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+
+    .lightbox.active { display: flex; }
+
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 12px;
+      object-fit: contain;
+      box-shadow: 0 0 60px rgba(0,201,167,0.2);
+    }
+
+    @media (max-width: 600px) {
+      .search-row { flex-direction: column; }
+      .card-grid { grid-template-columns: repeat(2, 1fr); }
+      .photos-strip img { height: 130px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">VINTED <span>CARD</span> SCRAPER</div>
+  <div class="subtitle">NFL &bull; NBA &bull; Sports Cards Analyzer</div>
+</header>
+
+<main>
+  <div class="search-wrap">
+    <label class="search-label" for="urlInput">URL de l'annonce Vinted</label>
+    <div class="search-row">
+      <input
+        class="url-input"
+        id="urlInput"
+        type="url"
+        placeholder="https://www.vinted.fr/items/..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn-scrape" id="btnScrape" onclick="scrape()">Analyser</button>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="status" id="status">
+    <div class="spinner"></div>
+    Analyse de l'annonce en cours…
+  </div>
+
+  <div id="result">
+    <!-- Card parsed info -->
+    <div class="card-info" id="cardInfo"></div>
+
+    <!-- Listing -->
+    <div class="listing-block" id="listingBlock"></div>
+  </div>
+</main>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="" />
+</div>
+
+<script>
+  const API_BASE = '';
+
+  async function scrape() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) return;
+
+    setLoading(true);
+    hideError();
+    document.getElementById('result').style.display = 'none';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/scrape?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError(data.detail || 'Erreur inconnue');
+        return;
+      }
+
+      renderResult(data);
+    } catch (e) {
+      showError('Impossible de contacter le serveur. Vérifiez que le backend tourne.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResult({ listing, card }) {
+    renderCardInfo(card, listing);
+    renderListing(listing);
+    document.getElementById('result').style.display = 'block';
+  }
+
+  function renderCardInfo(card, listing) {
+    const field = (label, value, cls = '') => {
+      const display = value
+        ? `<div class="field-value ${cls}">${esc(value)}</div>`
+        : `<div class="field-value empty">—</div>`;
+      return `<div class="card-field"><div class="field-label">${label}</div>${display}</div>`;
+    };
+
+    const tagList = (items, cls = '') =>
+      items && items.length
+        ? `<div class="tag-list">${items.map(t => `<span class="tag ${cls}">${esc(t)}</span>`).join('')}</div>`
+        : `<div class="field-value empty">—</div>`;
+
+    const sport = card.sport || (listing.category_path || '').includes('NBA') ? 'NBA' : '';
+
+    const html = `
+      <div class="section-title">Infos carte détectées</div>
+      <div class="card-grid">
+        ${field('Sport', card.sport || sport, 'accent')}
+        ${field('Année', card.year, 'accent')}
+        ${field('Joueur', card.player)}
+        ${field('Équipe', card.team)}
+        ${field('N° carte', card.card_number)}
+        ${card.lot_count ? field('Lot', card.lot_count + ' cartes') : ''}
+      </div>
+      ${card.series && card.series.length ? `
+        <div style="margin-top:1rem">
+          <div class="field-label">Séries / Sets</div>
+          ${tagList(card.series)}
+        </div>
+      ` : ''}
+      ${card.variants && card.variants.length ? `
+        <div style="margin-top:0.75rem">
+          <div class="field-label">Variantes / Parallels</div>
+          ${tagList(card.variants, 'blue')}
+        </div>
+      ` : ''}
+    `;
+    document.getElementById('cardInfo').innerHTML = html;
+  }
+
+  function renderListing(listing) {
+    const price = listing.price
+      ? `<div class="price-badge">${esc(listing.price)} ${esc(listing.currency || '€')}</div>`
+      : '';
+
+    const photos = (listing.photos || []).map(url =>
+      `<img src="${esc(url)}" alt="photo" loading="lazy" onclick="openLightbox('${esc(url)}')" />`
+    ).join('');
+
+    const meta = [
+      { label: 'État', val: listing.condition },
+      { label: 'Marque', val: listing.brand },
+      { label: 'Localisation', val: listing.location || listing.country },
+      { label: 'Catégorie', val: listing.category_path },
+    ].filter(m => m.val);
+
+    const metaHtml = meta.map(m =>
+      `<div class="meta-item"><div class="meta-label">${m.label}</div><div class="meta-value">${esc(m.val)}</div></div>`
+    ).join('');
+
+    const seller = listing.seller || {};
+    const sellerHtml = seller.login ? `
+      <div class="seller-info">
+        <div class="seller-avatar">${esc(seller.login[0].toUpperCase())}</div>
+        <div>
+          <div class="seller-name">${esc(seller.login)}</div>
+          ${seller.item_count ? `<div class="seller-sub">${seller.item_count} articles</div>` : ''}
+        </div>
+      </div>
+    ` : '<div></div>';
+
+    const stats = [
+      { val: listing.view_count, label: 'Vues' },
+      { val: listing.favourite_count, label: 'Favoris' },
+    ].filter(s => s.val);
+
+    const statsHtml = stats.length
+      ? `<div class="stats">${stats.map(s =>
+          `<div class="stat"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`
+        ).join('')}</div>`
+      : '';
+
+    const html = `
+      <div class="listing-header">
+        <div class="listing-title">${esc(listing.title)}</div>
+        ${price}
+      </div>
+      ${photos ? `<div class="photos-strip">${photos}</div>` : ''}
+      ${metaHtml ? `<div class="listing-meta">${metaHtml}</div>` : ''}
+      ${listing.description ? `
+        <div class="listing-desc">
+          <div class="section-title" style="margin-bottom:0.6rem">Description</div>
+          <p>${esc(listing.description)}</p>
+        </div>
+      ` : ''}
+      <div class="listing-footer">
+        ${sellerHtml}
+        ${statsHtml}
+        ${listing.url ? `<a class="open-link" href="${esc(listing.url)}" target="_blank" rel="noopener">Voir sur Vinted ↗</a>` : ''}
+      </div>
+    `;
+    document.getElementById('listingBlock').innerHTML = html;
+  }
+
+  function openLightbox(url) {
+    document.getElementById('lightboxImg').src = url;
+    document.getElementById('lightbox').classList.add('active');
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'Enter' && document.activeElement.id === 'urlInput') scrape();
+  });
+
+  function setLoading(on) {
+    document.getElementById('status').style.display = on ? 'block' : 'none';
+    document.getElementById('btnScrape').disabled = on;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBox');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').style.display = 'none';
+  }
+
+  function esc(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+</script>
+
+</body>
+</html>
