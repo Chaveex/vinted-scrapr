@@ -1,20 +1,35 @@
-import express from "express";
-import path from "path";
+import { readFileSync } from "fs";
+import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
+import express from "express";
 import { scrapeVintedItem } from "./scraper.js";
 import { parseCard } from "./cardParser.js";
+import { analyzeCardPhoto } from "./photoAnalyzer.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Load .env manually (no external dep needed)
+try {
+  const lines = readFileSync(resolve(__dirname, "..", ".env"), "utf8").split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const idx = trimmed.indexOf("=");
+    if (idx === -1) continue;
+    const key = trimmed.slice(0, idx).trim();
+    const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+    if (key && !process.env[key]) process.env[key] = val;
+  }
+} catch { /* .env is optional */ }
+
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// CORS
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   next();
 });
 
-// API
 app.get("/api/scrape", async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ detail: "Missing url parameter" });
@@ -30,10 +45,25 @@ app.get("/api/scrape", async (req, res) => {
   }
 });
 
-// Frontend
-app.use(express.static(path.join(__dirname, "..", "frontend")));
+app.get("/api/analyze-photo", async (req, res) => {
+  const imageUrl = req.query.url;
+  if (!imageUrl) return res.status(400).json({ detail: "Missing url parameter" });
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ detail: "ANTHROPIC_API_KEY not configured — add it to .env" });
+  }
+
+  try {
+    const result = await analyzeCardPhoto(imageUrl);
+    res.json(result);
+  } catch (err) {
+    res.status(502).json({ detail: err.message });
+  }
+});
+
+app.use(express.static(join(__dirname, "..", "frontend")));
 app.get("/", (_, res) => {
-  res.sendFile(path.join(__dirname, "..", "frontend", "index.html"));
+  res.sendFile(join(__dirname, "..", "frontend", "index.html"));
 });
 
 app.listen(PORT, () => {

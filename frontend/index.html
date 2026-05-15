@@ -463,10 +463,203 @@
       box-shadow: 0 0 60px rgba(0,201,167,0.2);
     }
 
+    /* AI analysis block */
+    .ai-block {
+      background: var(--glass);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+      border-radius: 14px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      display: none;
+    }
+
+    .ai-block::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(135deg, #8b5cf6 0%, #00c9a7 50%, #0891b2 100%);
+    }
+
+    .ai-block .section-title { color: #a78bfa; }
+
+    .ai-layout {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .ai-photo {
+      flex-shrink: 0;
+      width: 140px;
+    }
+
+    .ai-photo img {
+      width: 140px;
+      height: 190px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+      cursor: pointer;
+    }
+
+    .ai-photo img:hover {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 28px rgba(139, 92, 246, 0.4);
+    }
+
+    .ai-data { flex: 1; min-width: 240px; }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .ai-field {
+      background: rgba(7, 17, 31, 0.6);
+      border: 1px solid rgba(139, 92, 246, 0.18);
+      border-radius: 9px;
+      padding: 0.75rem 0.9rem;
+    }
+
+    .confidence-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.65rem;
+      border-radius: 5px;
+      margin-bottom: 1rem;
+    }
+
+    .confidence-badge.high {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .confidence-badge.medium {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .confidence-badge.low {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    /* Cross-validation diff */
+    .xval {
+      margin-top: 1rem;
+      border-top: 1px solid rgba(139, 92, 246, 0.18);
+      padding-top: 1rem;
+    }
+
+    .xval-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #a78bfa;
+      margin-bottom: 0.65rem;
+    }
+
+    .xval-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.82rem;
+      margin-bottom: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .xval-label {
+      color: var(--text2);
+      min-width: 60px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .xval-match { color: #34d399; font-weight: 600; }
+    .xval-mismatch { color: #f87171; font-weight: 600; }
+    .xval-unknown { color: var(--text2); font-style: italic; }
+
+    .match-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .match-dot.ok { background: #34d399; box-shadow: 0 0 5px #34d399; }
+    .match-dot.fail { background: #f87171; box-shadow: 0 0 5px #f87171; }
+    .match-dot.na { background: var(--text2); }
+
+    /* Analyse photo button in photos strip */
+    .photo-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .btn-analyze-photo {
+      display: block;
+      width: 100%;
+      margin-top: 0.5rem;
+      background: rgba(139, 92, 246, 0.12);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      border-radius: 7px;
+      color: #a78bfa;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 0.3rem 0.5rem;
+      transition: background 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-analyze-photo:hover {
+      background: rgba(139, 92, 246, 0.22);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-analyze-photo:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .ai-loading {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1rem 0;
+      color: #a78bfa;
+      font-size: 0.88rem;
+    }
+
+    .ai-spinner {
+      width: 22px; height: 22px;
+      border: 2px solid rgba(139, 92, 246, 0.2);
+      border-top-color: #8b5cf6;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
     @media (max-width: 600px) {
       .search-row { flex-direction: column; }
       .card-grid { grid-template-columns: repeat(2, 1fr); }
       .photos-strip img { height: 130px; }
+      .ai-photo { width: 110px; }
+      .ai-photo img { width: 110px; height: 150px; }
     }
   </style>
 </head>
@@ -501,8 +694,11 @@
   </div>
 
   <div id="result">
-    <!-- Card parsed info -->
+    <!-- Card parsed info (title-based) -->
     <div class="card-info" id="cardInfo"></div>
+
+    <!-- AI photo analysis -->
+    <div class="ai-block" id="aiBlock"></div>
 
     <!-- Listing -->
     <div class="listing-block" id="listingBlock"></div>
@@ -515,6 +711,7 @@
 
 <script>
   const API_BASE = '';
+  let _currentCard = null;
 
   async function scrape() {
     const url = document.getElementById('urlInput').value.trim();
@@ -523,6 +720,8 @@
     setLoading(true);
     hideError();
     document.getElementById('result').style.display = 'none';
+    document.getElementById('aiBlock').style.display = 'none';
+    _currentCard = null;
 
     try {
       const res = await fetch(`${API_BASE}/api/scrape?url=${encodeURIComponent(url)}`);
@@ -542,6 +741,7 @@
   }
 
   function renderResult({ listing, card }) {
+    _currentCard = card;
     renderCardInfo(card, listing);
     renderListing(listing);
     document.getElementById('result').style.display = 'block';
@@ -594,7 +794,10 @@
       : '';
 
     const photos = (listing.photos || []).map(url =>
-      `<img src="${esc(url)}" alt="photo" loading="lazy" onclick="openLightbox('${esc(url)}')" />`
+      `<div class="photo-wrap">
+        <img src="${esc(url)}" alt="photo" loading="lazy" onclick="openLightbox('${esc(url)}')" />
+        <button class="btn-analyze-photo" onclick="analyzePhoto('${esc(url)}', this)">🔬 Analyser</button>
+      </div>`
     ).join('');
 
     const meta = [
@@ -650,6 +853,112 @@
       </div>
     `;
     document.getElementById('listingBlock').innerHTML = html;
+  }
+
+  async function analyzePhoto(imageUrl, btn) {
+    const block = document.getElementById('aiBlock');
+    block.style.display = 'block';
+    block.innerHTML = `
+      <div class="section-title">Analyse IA — Vision carte</div>
+      <div class="ai-loading"><div class="ai-spinner"></div>Claude analyse la photo…</div>
+    `;
+    block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Disable all analyze buttons during request
+    document.querySelectorAll('.btn-analyze-photo').forEach(b => b.disabled = true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze-photo?url=${encodeURIComponent(imageUrl)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        block.innerHTML = `
+          <div class="section-title">Analyse IA — Vision carte</div>
+          <div style="color:#f87171;font-size:0.88rem;padding:0.5rem 0">${esc(data.detail || 'Erreur inconnue')}</div>
+        `;
+        return;
+      }
+
+      renderAiResult(data, imageUrl, _currentCard);
+    } catch (e) {
+      block.innerHTML = `
+        <div class="section-title">Analyse IA — Vision carte</div>
+        <div style="color:#f87171;font-size:0.88rem;padding:0.5rem 0">Erreur réseau : ${esc(e.message)}</div>
+      `;
+    } finally {
+      document.querySelectorAll('.btn-analyze-photo').forEach(b => b.disabled = false);
+    }
+  }
+
+  function renderAiResult(ai, imageUrl, card) {
+    const block = document.getElementById('aiBlock');
+
+    const aiField = (label, value) => {
+      const display = value
+        ? `<div class="field-value" style="color:#e2f0f5">${esc(value)}</div>`
+        : `<div class="field-value empty">—</div>`;
+      return `<div class="ai-field"><div class="field-label">${label}</div>${display}</div>`;
+    };
+
+    const conf = (ai.confidence || 'low').toLowerCase();
+    const confLabel = { high: 'Confiance haute', medium: 'Confiance moyenne', low: 'Confiance faible' }[conf] || conf;
+
+    // Cross-validation
+    const xvalRows = [
+      { label: 'Sport',   ai: ai.sport,        regex: card?.sport },
+      { label: 'Joueur',  ai: ai.player,       regex: card?.player },
+      { label: 'Équipe',  ai: ai.team,         regex: card?.team },
+      { label: 'Année',   ai: ai.year,         regex: card?.year },
+      { label: 'Série',   ai: ai.series,       regex: card?.series?.join(', ') },
+    ];
+
+    const xvalHtml = xvalRows.map(({ label, ai: aiVal, regex }) => {
+      if (!aiVal && !regex) return '';
+      const match = aiVal && regex
+        ? aiVal.toLowerCase().includes(regex.toLowerCase()) || regex.toLowerCase().includes(aiVal.toLowerCase())
+        : null;
+      const dotCls = match === null ? 'na' : match ? 'ok' : 'fail';
+      const textCls = match === null ? 'xval-unknown' : match ? 'xval-match' : 'xval-mismatch';
+      const display = aiVal
+        ? `<span class="${textCls}">${esc(aiVal)}</span>`
+        : `<span class="xval-unknown">non détecté</span>`;
+      const regexPart = regex
+        ? `<span style="color:var(--text2);font-size:0.75rem"> ↔ titre: ${esc(regex)}</span>`
+        : '';
+      return `
+        <div class="xval-row">
+          <span class="xval-label">${label}</span>
+          <span class="match-dot ${dotCls}"></span>
+          ${display}${regexPart}
+        </div>`;
+    }).join('');
+
+    block.innerHTML = `
+      <div class="section-title">Analyse IA — Vision carte</div>
+      <div class="ai-layout">
+        <div class="ai-photo">
+          <img src="${esc(imageUrl)}" alt="carte analysée" onclick="openLightbox('${esc(imageUrl)}')" />
+        </div>
+        <div class="ai-data">
+          <span class="confidence-badge ${conf}">● ${confLabel}</span>
+          <div class="ai-grid">
+            ${aiField('Sport', ai.sport)}
+            ${aiField('Année', ai.year)}
+            ${aiField('Joueur', ai.player)}
+            ${aiField('Équipe', ai.team)}
+            ${aiField('N° carte', ai.card_number)}
+            ${aiField('Série', ai.series)}
+            ${aiField('Variante', ai.variant)}
+          </div>
+          ${xvalHtml ? `
+            <div class="xval">
+              <div class="xval-title">Cross-validation vs titre annonce</div>
+              ${xvalHtml}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 
   function openLightbox(url) {

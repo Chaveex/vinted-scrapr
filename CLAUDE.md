@@ -46,13 +46,22 @@ Open `http://localhost:8000` in browser.
 
 ```
 GET /api/scrape?url=<vinted_url>
+GET /api/analyze-photo?url=<image_url>   — requires ANTHROPIC_API_KEY
 ```
 
-Returns:
+`/api/scrape` returns:
 ```json
 {
   "listing": { "title", "price", "photos", "description", "seller", ... },
   "card":    { "sport", "year", "player", "team", "card_number", "series", "variants", "lot_count" }
+}
+```
+
+`/api/analyze-photo` returns:
+```json
+{
+  "player", "team", "year", "series", "card_number", "variant", "sport",
+  "confidence": "high | medium | low"
 }
 ```
 
@@ -61,8 +70,15 @@ Returns:
 - Scraper looks for `<script id="__NEXT_DATA__">` (Vinted uses Next.js) → structured item JSON.
 - Fallback: parse `og:*` meta tags + JSON-LD if `__NEXT_DATA__` unavailable.
 - Card parser uses regex patterns + known team name lists (NFL + NBA) against title + description.
+- Photo analyzer sends image to `claude-haiku-4-5` vision — extracts info from what's PRINTED on the card only, ignoring listing text.
+- Frontend cross-validates AI vision result vs regex-parsed title.
 - No DB, no auth, no state — pure stateless scrape-on-request.
 
 ## Environment variables
 
-None required for basic use.
+```
+ANTHROPIC_API_KEY=sk-ant-...   # required for /api/analyze-photo
+PORT=8000                      # optional, default 8000
+```
+
+Copy `.env.example` → `.env` and fill in the key.
