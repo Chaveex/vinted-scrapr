@@ -304,12 +304,48 @@
       box-shadow: 0 2px 12px rgba(0,201,167,0.3);
     }
 
+    .photos-section {
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .photos-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem 0;
+    }
+
+    .photos-count {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text2);
+    }
+
+    .btn-analyze-all {
+      background: linear-gradient(135deg, #8b5cf6 0%, #0891b2 100%);
+      border: none;
+      border-radius: 7px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 0.4rem 1rem;
+      transition: opacity 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 10px rgba(139, 92, 246, 0.35);
+      white-space: nowrap;
+    }
+
+    .btn-analyze-all:hover { opacity: 0.9; box-shadow: 0 3px 16px rgba(139, 92, 246, 0.5); }
+    .btn-analyze-all:disabled { opacity: 0.4; cursor: not-allowed; }
+
     .photos-strip {
       display: flex;
       gap: 0.75rem;
-      padding: 1.25rem 1.5rem;
+      padding: 0.75rem 1.5rem 1rem;
       overflow-x: auto;
-      border-bottom: 1px solid var(--border2);
       scrollbar-width: thin;
       scrollbar-color: var(--blue2) transparent;
     }
@@ -740,14 +776,14 @@
     }
   }
 
-  function renderResult({ listing, card }) {
+  function renderResult({ listing, card, player_match }) {
     _currentCard = card;
-    renderCardInfo(card, listing);
+    renderCardInfo(card, listing, player_match);
     renderListing(listing);
     document.getElementById('result').style.display = 'block';
   }
 
-  function renderCardInfo(card, listing) {
+  function renderCardInfo(card, listing, playerMatch) {
     const field = (label, value, cls = '') => {
       const display = value
         ? `<div class="field-value ${cls}">${esc(value)}</div>`
@@ -784,8 +820,42 @@
           ${tagList(card.variants, 'blue')}
         </div>
       ` : ''}
+      ${renderPlayerMatch(playerMatch, card.player)}
     `;
     document.getElementById('cardInfo').innerHTML = html;
+  }
+
+  function renderPlayerMatch(match, rawName) {
+    if (!match && !rawName) return '';
+
+    if (!match) return `
+      <div style="margin-top:1rem;padding:0.75rem 1rem;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:9px">
+        <div class="field-label" style="color:#f87171;margin-bottom:0.25rem">Joueur non identifié dans la base NFL/NBA</div>
+        <div style="font-size:0.82rem;color:var(--text2)">"${esc(rawName)}" — aucun match trouvé</div>
+      </div>`;
+
+    const confPct = Math.round((match.confidence ?? 0) * 100);
+    const confColor = confPct >= 90 ? '#34d399' : confPct >= 70 ? '#fbbf24' : '#f87171';
+    const isExact = match.exact;
+    const corrected = rawName && match.full_name.toLowerCase() !== rawName.toLowerCase();
+
+    return `
+      <div style="margin-top:1rem;padding:0.75rem 1rem;background:rgba(0,201,167,0.06);border:1px solid rgba(0,201,167,0.2);border-radius:9px;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <div class="field-label" style="margin-bottom:0.3rem">Joueur identifié (Sleeper)</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--teal)">${esc(match.full_name)}</div>
+          ${corrected ? `<div style="font-size:0.72rem;color:var(--text2);margin-top:0.2rem">Extrait : "${esc(rawName)}"</div>` : ''}
+        </div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+          ${match.team ? `<div style="text-align:center"><div class="field-label">Équipe</div><div style="font-weight:700;color:var(--text)">${esc(match.team)}</div></div>` : ''}
+          ${match.position ? `<div style="text-align:center"><div class="field-label">Poste</div><div style="font-weight:700;color:var(--text)">${esc(match.position)}</div></div>` : ''}
+          ${match.status ? `<div style="text-align:center"><div class="field-label">Statut</div><div style="font-size:0.8rem;color:${match.status==='Active'?'#34d399':'var(--text2)'};">${esc(match.status)}</div></div>` : ''}
+          <div style="text-align:center">
+            <div class="field-label">Confiance</div>
+            <div style="font-weight:700;color:${confColor}">${confPct}%${isExact ? ' ✓' : ''}</div>
+          </div>
+        </div>
+      </div>`;
   }
 
   function renderListing(listing) {
@@ -793,7 +863,8 @@
       ? `<div class="price-badge">${esc(listing.price)} ${esc(listing.currency || '€')}</div>`
       : '';
 
-    const photos = (listing.photos || []).map(url =>
+    const photoUrls = listing.photos || [];
+    const photos = photoUrls.map(url =>
       `<div class="photo-wrap">
         <img src="${esc(url)}" alt="photo" loading="lazy" onclick="openLightbox('${esc(url)}')" />
         <button class="btn-analyze-photo" onclick="analyzePhoto('${esc(url)}', this)">🔬 Analyser</button>
@@ -838,7 +909,16 @@
         <div class="listing-title">${esc(listing.title)}</div>
         ${price}
       </div>
-      ${photos ? `<div class="photos-strip">${photos}</div>` : ''}
+      ${photos ? `
+        <div class="photos-section">
+          <div class="photos-header">
+            <span class="photos-count">${photoUrls.length} photo${photoUrls.length > 1 ? 's' : ''}</span>
+            ${photoUrls.length > 1
+              ? `<button class="btn-analyze-all" id="btnAnalyzeAll" onclick="analyzeAllPhotos(${JSON.stringify(photoUrls).replace(/"/g,'&quot;')})">🔬 Analyser recto / verso</button>`
+              : ''}
+          </div>
+          <div class="photos-strip">${photos}</div>
+        </div>` : ''}
       ${metaHtml ? `<div class="listing-meta">${metaHtml}</div>` : ''}
       ${listing.description ? `
         <div class="listing-desc">
@@ -853,6 +933,35 @@
       </div>
     `;
     document.getElementById('listingBlock').innerHTML = html;
+  }
+
+  async function analyzeAllPhotos(urls) {
+    const block = document.getElementById('aiBlock');
+    block.style.display = 'block';
+    block.innerHTML = `
+      <div class="section-title">Analyse IA — Vision carte (${urls.length} photos)</div>
+      <div class="ai-loading"><div class="ai-spinner"></div>Claude analyse ${urls.length} photos en parallèle…</div>
+    `;
+    block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    document.querySelectorAll('.btn-analyze-photo, .btn-analyze-all').forEach(b => b.disabled = true);
+
+    try {
+      const params = urls.map(u => `url=${encodeURIComponent(u)}`).join('&');
+      const res = await fetch(`${API_BASE}/api/analyze-photos?${params}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        block.innerHTML = `<div class="section-title">Analyse IA</div><div style="color:#f87171;font-size:0.88rem">${esc(data.detail || 'Erreur')}</div>`;
+        return;
+      }
+
+      renderAiMultiResult(data, urls, _currentCard);
+    } catch (e) {
+      block.innerHTML = `<div class="section-title">Analyse IA</div><div style="color:#f87171;font-size:0.88rem">Erreur réseau: ${esc(e.message)}</div>`;
+    } finally {
+      document.querySelectorAll('.btn-analyze-photo, .btn-analyze-all').forEach(b => b.disabled = false);
+    }
   }
 
   async function analyzePhoto(imageUrl, btn) {
@@ -890,9 +999,52 @@
     }
   }
 
-  function renderAiResult(ai, imageUrl, card) {
+  function renderAiMultiResult({ results, merged }, urls, card) {
     const block = document.getElementById('aiBlock');
 
+    const sideLabel = s => ({ front: 'Recto', back: 'Verso', unknown: '?' }[s] || '?');
+    const sideColor = s => ({ front: 'var(--teal)', back: '#a78bfa', unknown: 'var(--text2)' }[s] || 'var(--text2)');
+
+    // Per-photo mini cards
+    const photoCards = results.map((r, i) => {
+      if (r.error) return `
+        <div style="flex-shrink:0;width:130px">
+          <img src="${esc(r.url)}" style="width:130px;height:170px;object-fit:cover;border-radius:8px;border:1px solid rgba(239,68,68,0.3);opacity:0.5" />
+          <div style="font-size:0.7rem;color:#f87171;margin-top:0.3rem;text-align:center">Erreur analyse</div>
+        </div>`;
+      const side = r.side || 'unknown';
+      return `
+        <div style="flex-shrink:0;width:130px">
+          <div style="position:relative">
+            <img src="${esc(r.url)}" style="width:130px;height:170px;object-fit:cover;border-radius:8px;border:1px solid ${sideColor(side)};box-shadow:0 0 12px ${sideColor(side)}44;cursor:pointer" onclick="openLightbox('${esc(r.url)}')" />
+            <span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.75);border-radius:4px;padding:2px 7px;font-size:0.65rem;font-weight:700;color:${sideColor(side)}">${sideLabel(side)}</span>
+          </div>
+          <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--text2)">
+            ${r.player ? `<div style="color:var(--text);font-weight:600">${esc(r.player)}</div>` : ''}
+            ${r.team ? `<div>${esc(r.team)}</div>` : ''}
+            ${r.card_number ? `<div style="color:var(--teal)">${esc(r.card_number)}</div>` : ''}
+            ${r.series ? `<div style="font-style:italic">${esc(r.series)}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Merged result (same as single but uses merged data)
+    const mergedHtml = merged ? renderAiFields(merged, card) : '<div style="color:var(--text2);font-size:0.88rem">Aucun résultat exploitable</div>';
+
+    block.innerHTML = `
+      <div class="section-title">Analyse IA — ${results.length} photo${results.length>1?'s':''} analysées</div>
+      <div style="display:flex;gap:0.85rem;overflow-x:auto;padding-bottom:0.75rem;margin-bottom:1.25rem;scrollbar-width:thin;scrollbar-color:var(--blue2) transparent">
+        ${photoCards}
+      </div>
+      ${merged ? `
+        <div style="border-top:1px solid rgba(139,92,246,0.18);padding-top:1.25rem">
+          <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#a78bfa;margin-bottom:0.75rem">Infos fusionnées (${merged.photoCount} photo${merged.photoCount>1?'s':''})</div>
+          ${mergedHtml}
+        </div>` : ''}
+    `;
+  }
+
+  function renderAiFields(ai, card) {
     const aiField = (label, value) => {
       const display = value
         ? `<div class="field-value" style="color:#e2f0f5">${esc(value)}</div>`
@@ -903,13 +1055,12 @@
     const conf = (ai.confidence || 'low').toLowerCase();
     const confLabel = { high: 'Confiance haute', medium: 'Confiance moyenne', low: 'Confiance faible' }[conf] || conf;
 
-    // Cross-validation
     const xvalRows = [
-      { label: 'Sport',   ai: ai.sport,        regex: card?.sport },
-      { label: 'Joueur',  ai: ai.player,       regex: card?.player },
-      { label: 'Équipe',  ai: ai.team,         regex: card?.team },
-      { label: 'Année',   ai: ai.year,         regex: card?.year },
-      { label: 'Série',   ai: ai.series,       regex: card?.series?.join(', ') },
+      { label: 'Sport',  ai: ai.sport,   regex: card?.sport },
+      { label: 'Joueur', ai: ai.player,  regex: card?.player },
+      { label: 'Équipe', ai: ai.team,    regex: card?.team },
+      { label: 'Année',  ai: ai.year,    regex: card?.year },
+      { label: 'Série',  ai: ai.series,  regex: card?.series?.join(', ') },
     ];
 
     const xvalHtml = xvalRows.map(({ label, ai: aiVal, regex }) => {
@@ -919,44 +1070,40 @@
         : null;
       const dotCls = match === null ? 'na' : match ? 'ok' : 'fail';
       const textCls = match === null ? 'xval-unknown' : match ? 'xval-match' : 'xval-mismatch';
-      const display = aiVal
-        ? `<span class="${textCls}">${esc(aiVal)}</span>`
-        : `<span class="xval-unknown">non détecté</span>`;
-      const regexPart = regex
-        ? `<span style="color:var(--text2);font-size:0.75rem"> ↔ titre: ${esc(regex)}</span>`
-        : '';
-      return `
-        <div class="xval-row">
-          <span class="xval-label">${label}</span>
-          <span class="match-dot ${dotCls}"></span>
-          ${display}${regexPart}
-        </div>`;
+      const regexPart = regex ? `<span style="color:var(--text2);font-size:0.75rem"> ↔ titre: ${esc(regex)}</span>` : '';
+      return `<div class="xval-row">
+        <span class="xval-label">${label}</span>
+        <span class="match-dot ${dotCls}"></span>
+        <span class="${textCls}">${aiVal ? esc(aiVal) : '<i>non détecté</i>'}</span>${regexPart}
+      </div>`;
     }).join('');
 
+    return `
+      <span class="confidence-badge ${conf}">● ${confLabel}</span>
+      <div class="ai-grid">
+        ${aiField('Sport', ai.sport)}
+        ${aiField('Année', ai.year)}
+        ${aiField('Joueur', ai.player)}
+        ${aiField('Équipe', ai.team)}
+        ${aiField('N° carte', ai.card_number)}
+        ${aiField('Série', ai.series)}
+        ${aiField('Variante', ai.variant)}
+      </div>
+      ${xvalHtml ? `<div class="xval"><div class="xval-title">Cross-validation vs titre annonce</div>${xvalHtml}</div>` : ''}
+    `;
+  }
+
+  function renderAiResult(ai, imageUrl, card) {
+    const block = document.getElementById('aiBlock');
+    const sideLabel = { front: 'Recto', back: 'Verso', unknown: '' }[ai.side] || '';
+
     block.innerHTML = `
-      <div class="section-title">Analyse IA — Vision carte</div>
+      <div class="section-title">Analyse IA — Vision carte${sideLabel ? ' · ' + sideLabel : ''}</div>
       <div class="ai-layout">
         <div class="ai-photo">
           <img src="${esc(imageUrl)}" alt="carte analysée" onclick="openLightbox('${esc(imageUrl)}')" />
         </div>
-        <div class="ai-data">
-          <span class="confidence-badge ${conf}">● ${confLabel}</span>
-          <div class="ai-grid">
-            ${aiField('Sport', ai.sport)}
-            ${aiField('Année', ai.year)}
-            ${aiField('Joueur', ai.player)}
-            ${aiField('Équipe', ai.team)}
-            ${aiField('N° carte', ai.card_number)}
-            ${aiField('Série', ai.series)}
-            ${aiField('Variante', ai.variant)}
-          </div>
-          ${xvalHtml ? `
-            <div class="xval">
-              <div class="xval-title">Cross-validation vs titre annonce</div>
-              ${xvalHtml}
-            </div>
-          ` : ''}
-        </div>
+        <div class="ai-data">${renderAiFields(ai, card)}</div>
       </div>
     `;
   }

@@ -4,7 +4,8 @@ import { fileURLToPath } from "url";
 import express from "express";
 import { scrapeVintedItem } from "./scraper.js";
 import { parseCard } from "./cardParser.js";
-import { analyzeCardPhoto } from "./photoAnalyzer.js";
+import { analyzeCardPhoto, analyzeCardPhotos } from "./photoAnalyzer.js";
+import { findPlayer } from "./playerMatcher.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,10 +39,34 @@ app.get("/api/scrape", async (req, res) => {
   try {
     const listing = await scrapeVintedItem(url);
     const card = parseCard(listing.title, listing.description);
-    res.json({ listing, card });
+
+    // Fuzzy-match player name against Sleeper roster
+    const sport = (card.sport ?? "nfl").toLowerCase();
+    const playerMatch = await findPlayer(card.player, sport);
+
+    res.json({ listing, card, player_match: playerMatch });
   } catch (err) {
     const status = err.message.startsWith("HTTP") ? 502 : 422;
     res.status(status).json({ detail: err.message });
+  }
+});
+
+// Analyze multiple photos in parallel → merged result
+app.get("/api/analyze-photos", async (req, res) => {
+  let urls = req.query.url;
+  if (!urls) return res.status(400).json({ detail: "Missing url parameter" });
+  if (!Array.isArray(urls)) urls = [urls];
+  urls = urls.filter(u => u.startsWith("http")).slice(0, 8); // max 8 photos
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ detail: "ANTHROPIC_API_KEY not configured — add it to .env" });
+  }
+
+  try {
+    const result = await analyzeCardPhotos(urls);
+    res.json(result);
+  } catch (err) {
+    res.status(502).json({ detail: err.message });
   }
 });
 

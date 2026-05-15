@@ -12,15 +12,37 @@ const HEADERS = {
   "Upgrade-Insecure-Requests": "1",
 };
 
+const API_HEADERS = {
+  ...HEADERS,
+  "Accept": "application/json, text/plain, */*",
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-origin",
+};
+
 function ensureHttps(url) {
   if (!url) return url;
   return url.startsWith("http") ? url : "https://" + url;
 }
 
+function extractItemId(url) {
+  const match = url.match(/\/items\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+function extractBaseUrl(url) {
+  const match = url.match(/^(https?:\/\/(?:www\.)?vinted\.\w+)/);
+  return match ? match[1] : "https://www.vinted.fr";
+}
+
 function extractPhotos(photos = []) {
   return photos.flatMap(p => {
-    for (const key of ["full_size_url", "url", "thumb_url"]) {
-      if (p[key]) return [ensureHttps(p[key])];
+    // Prefer highest resolution available
+    for (const key of ["full_size_url", "high_resolution", "url", "thumb_url"]) {
+      if (p[key]) {
+        const u = typeof p[key] === "object" ? p[key].url : p[key];
+        if (u) return [ensureHttps(u)];
+      }
     }
     return [];
   });
@@ -40,7 +62,7 @@ function extractSeller(user = {}) {
 function mapItem(data, url) {
   return {
     id: String(data.id ?? ""),
-    title: data.title ?? "",
+    title: (data.title ?? "").replace(/\s*[\|–-]\s*Vinted\s*$/i, "").trim(),
     description: data.description ?? "",
     price: data.price ?? "",
     currency: data.currency ?? "EUR",
@@ -58,34 +80,84 @@ function mapItem(data, url) {
   };
 }
 
+// Try Vinted internal API — returns clean structured JSON for the specific item
+async function tryVintedApi(itemId, baseUrl) {
+  try {
+    const apiUrl = `${baseUrl}/api/v2/items/${itemId}`;
+    const res = await fetch(apiUrl, { headers: API_HEADERS, redirect: "follow" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.item ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Parse __NEXT_DATA__ JSON — only used when API fails
 function parseNextData(html) {
   const $ = cheerio.load(html);
   const script = $("#__NEXT_DATA__").html();
   if (!script) return null;
-  try {
-    return JSON.parse(script);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(script); } catch { return null; }
 }
 
 function findItemInNextData(nextData) {
   try {
     const pageProps = nextData?.props?.pageProps ?? {};
     for (const key of ["item", "itemDto", "listing"]) {
-      if (pageProps[key]) return pageProps[key];
+      if (pageProps[key]?.photos) return pageProps[key];
     }
-    const initialState = pageProps.initialState ?? {};
-    const items = initialState.items ?? {};
-    const first = Object.values(items)[0];
-    if (first) return first;
-    return null;
-  } catch {
-    return null;
-  }
+    // Recursive search for first object with a photos array
+    return findObjectWithPhotos(pageProps, 0);
+  } catch { return null; }
 }
 
-function fallbackParse(html, url) {
+function findObjectWithPhotos(obj, depth) {
+  if (depth > 6 || !obj || typeof obj !== "object") return null;
+  if (Array.isArray(obj)) return null;
+  if (Array.isArray(obj.photos) && obj.photos.length > 0 && obj.title) return obj;
+  for (const val of Object.values(obj)) {
+    const found = findObjectWithPhotos(val, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+// All photos in a Vinted listing share the same numeric timestamp in the CDN URL:
+// https://images1.vinted.net/t/{hash}/{size}/{timestamp}.webp
+// Use the timestamp from the first known photo to filter only this listing's photos.
+function extractListingPhotos(html, firstPhotoUrl) {
+  const tsMatch = firstPhotoUrl?.match(/\/(\d{8,})\.\w+/);
+  if (!tsMatch) return null;
+
+  const timestamp = tsMatch[1];
+  const pattern = new RegExp(
+    `https://images\\d*\\.vinted\\.net/[^\\s"'<>\\\\]+/${timestamp}\\.\\w+(?:\\?[^\\s"'<>\\\\]*)?`,
+    "g"
+  );
+  const allMatches = [...new Set(html.match(pattern) ?? [])];
+  if (allMatches.length <= 1) return null;
+
+  // Each photo has a unique hash segment — group by it and pick f800 (highest res)
+  // URL structure: /t/{hash}/{size}/{timestamp}.ext
+  const byHash = new Map();
+  for (const url of allMatches) {
+    const hashMatch = url.match(/\/t[c]?\/([^/]+)\//);
+    if (!hashMatch) continue;
+    const hash = hashMatch[1];
+    const existing = byHash.get(hash);
+    // Prefer f800 over other sizes
+    if (!existing || url.includes("/f800/")) {
+      byHash.set(hash, url);
+    }
+  }
+
+  const deduped = [...byHash.values()];
+  return deduped.length > 1 ? deduped.map(u => ({ url: u })) : null;
+}
+
+// Fallback: meta tags + timestamp-filtered CDN scan
+function fallbackParseMeta(html, url) {
   const $ = cheerio.load(html);
   const data = { url };
 
@@ -97,7 +169,7 @@ function fallbackParse(html, url) {
   data.description = og("description") ?? metaName("description") ?? "";
   data.price = $(`meta[property="product:price:amount"]`).attr("content") ?? "";
 
-  // JSON-LD
+  // JSON-LD (listing-specific)
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
       const ld = JSON.parse($(el).html() ?? "");
@@ -112,35 +184,46 @@ function fallbackParse(html, url) {
     } catch { /* ignore */ }
   });
 
-  // Collect all og:image tags
-  if (!data.photos || !data.photos.length) {
-    const ogImgs = $('meta[property="og:image"], meta[property="og:image:url"]')
-      .map((_, el) => ({ url: $(el).attr("content") }))
-      .get()
-      .filter(p => p.url);
-    if (ogImgs.length) data.photos = ogImgs;
-  }
+  // og:image — always scoped to current listing, use it as anchor for timestamp filter
+  const ogImgs = $('meta[property="og:image"], meta[property="og:image:url"]')
+    .map((_, el) => ({ url: $(el).attr("content") }))
+    .get()
+    .filter(p => p.url);
 
-  // Fallback: find vinted CDN image URLs in raw HTML
-  if (!data.photos || !data.photos.length) {
-    const cdnPattern = /https:\/\/images\d*\.vinted\.net\/[^\s"']+\.(?:webp|jpg|jpeg|png)/g;
-    const cdnMatches = [...new Set(html.match(cdnPattern) ?? [])];
-    if (cdnMatches.length) data.photos = cdnMatches.map(u => ({ url: u }));
+  if (!data.photos?.length && ogImgs.length) data.photos = ogImgs;
+
+  // Use the first known photo's timestamp to find all sibling photos in the HTML
+  const firstUrl = data.photos?.[0]?.url;
+  if (firstUrl) {
+    const allPhotos = extractListingPhotos(html, firstUrl);
+    if (allPhotos) data.photos = allPhotos;
   }
 
   return data.title ? data : null;
 }
 
 export async function scrapeVintedItem(url) {
+  const itemId = extractItemId(url);
+  const baseUrl = extractBaseUrl(url);
+
+  // 1. Try Vinted API directly — most reliable, returns only this item's photos
+  if (itemId) {
+    const apiData = await tryVintedApi(itemId, baseUrl);
+    if (apiData) return mapItem(apiData, url);
+  }
+
+  // 2. Try __NEXT_DATA__ from HTML
   const res = await fetch(url, { headers: HEADERS, redirect: "follow" });
   if (!res.ok) throw new Error(`HTTP ${res.status} from Vinted`);
   const html = await res.text();
 
   const nextData = parseNextData(html);
-  let itemData = nextData ? findItemInNextData(nextData) : null;
+  const nextItem = nextData ? findItemInNextData(nextData) : null;
+  if (nextItem) return mapItem(nextItem, url);
 
-  if (!itemData) itemData = fallbackParse(html, url);
-  if (!itemData) throw new Error("Could not extract item data from Vinted page");
+  // 3. Fallback: meta tags only (listing-scoped, no greedy CDN scan)
+  const metaData = fallbackParseMeta(html, url);
+  if (metaData) return mapItem(metaData, url);
 
-  return mapItem(itemData, url);
+  throw new Error("Could not extract item data from Vinted page");
 }
