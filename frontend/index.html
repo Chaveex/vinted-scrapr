@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
   <title>Vinted Card Scraper</title>
   <style>
     :root {
@@ -702,8 +703,13 @@
 <body>
 
 <header>
-  <div class="logo">VINTED <span>CARD</span> SCRAPER</div>
-  <div class="subtitle">NFL &bull; NBA &bull; Sports Cards Analyzer</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+    <div>
+      <div class="logo">VINTED <span>CARD</span> SCRAPER</div>
+      <div class="subtitle">NFL &bull; NBA &bull; Sports Cards Analyzer</div>
+    </div>
+    <a href="/gallery" style="background:rgba(0,201,167,0.08);border:1px solid rgba(0,201,167,0.25);border-radius:8px;color:var(--teal);text-decoration:none;font-size:0.82rem;font-weight:600;padding:0.45rem 1rem;transition:background 0.15s" onmouseover="this.style.background='rgba(0,201,167,0.16)'" onmouseout="this.style.background='rgba(0,201,167,0.08)'">🃏 Galerie →</a>
+  </div>
 </header>
 
 <main>
@@ -738,6 +744,12 @@
 
     <!-- Listing -->
     <div class="listing-block" id="listingBlock"></div>
+
+    <div style="text-align:right;margin-top:1rem">
+      <button id="btnSave" onclick="saveCard()" style="background:rgba(0,201,167,0.08);border:1px solid rgba(0,201,167,0.25);border-radius:8px;color:var(--teal);cursor:pointer;font-size:0.82rem;font-weight:600;padding:0.5rem 1.25rem;transition:all 0.15s">
+        💾 Sauvegarder en galerie
+      </button>
+    </div>
   </div>
 </main>
 
@@ -776,11 +788,41 @@
     }
   }
 
-  function renderResult({ listing, card, player_match }) {
-    _currentCard = card;
-    renderCardInfo(card, listing, player_match);
-    renderListing(listing);
+  let _lastScrapeData = null;
+
+  function renderResult(data) {
+    _lastScrapeData = data;
+    _currentCard = data.card;
+    renderCardInfo(data.card, data.listing, data.player_match);
+    renderListing(data.listing);
     document.getElementById('result').style.display = 'block';
+  }
+
+  async function saveCard() {
+    if (!_lastScrapeData) return;
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch('/api/cards/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(_lastScrapeData),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        btn.textContent = '✓ Sauvegardée';
+        btn.style.background = 'rgba(52,211,153,0.15)';
+        btn.style.borderColor = 'rgba(52,211,153,0.4)';
+        btn.style.color = '#34d399';
+      } else {
+        btn.textContent = '✗ Erreur';
+        btn.disabled = false;
+      }
+    } catch {
+      btn.textContent = '✗ Erreur réseau';
+      btn.disabled = false;
+    }
   }
 
   function renderCardInfo(card, listing, playerMatch) {

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <title>Galerie — Vinted Card Scraper</title>
+  <style>
+    :root {
+      --bg:      #07111f;
+      --bg2:     #0d1b2e;
+      --teal:    #00c9a7;
+      --teal2:   #00a3cc;
+      --blue:    #0891b2;
+      --blue2:   #0e4d6e;
+      --glow:    rgba(0,201,167,0.22);
+      --glow2:   rgba(8,145,178,0.18);
+      --text:    #e2f0f5;
+      --text2:   #8ab4c4;
+      --border:  rgba(0,201,167,0.18);
+      --border2: rgba(8,145,178,0.18);
+      --glass:   rgba(13,27,46,0.8);
+      --metal1:  linear-gradient(135deg,#00c9a7 0%,#0891b2 50%,#0e5f88 100%);
+      --sidebar: 260px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0,201,167,0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 30% at 80% 110%, rgba(8,145,178,0.08) 0%, transparent 70%);
+    }
+
+    /* HEADER */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(7,17,31,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border2);
+      padding: 0.75rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .logo {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em;
+      background: var(--metal1);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .logo span { font-weight: 300; }
+    .nav-link {
+      color: var(--text2); text-decoration: none; font-size: 0.82rem;
+      padding: 0.3rem 0.75rem; border-radius: 6px;
+      border: 1px solid var(--border2);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nav-link:hover { color: var(--teal); border-color: var(--border); }
+    .header-right { display: flex; align-items: center; gap: 0.75rem; }
+    .view-btn {
+      background: none; border: 1px solid var(--border2); border-radius: 6px;
+      color: var(--text2); cursor: pointer; font-size: 1rem;
+      padding: 0.3rem 0.6rem; transition: all 0.15s;
+    }
+    .view-btn.active, .view-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .count-badge {
+      background: rgba(0,201,167,0.1); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--teal); font-size: 0.78rem; font-weight: 600;
+      padding: 0.25rem 0.7rem;
+    }
+    .btn-scrape-catalog {
+      background: var(--metal1); border: none; border-radius: 7px;
+      color: #fff; cursor: pointer; font-size: 0.82rem; font-weight: 600;
+      padding: 0.4rem 1rem; transition: opacity 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 10px rgba(0,201,167,0.25);
+    }
+    .btn-scrape-catalog:hover { opacity: 0.9; }
+    .btn-scrape-catalog:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* LAYOUT */
+    .layout { display: flex; min-height: calc(100vh - 52px); }
+
+    /* SIDEBAR */
+    aside {
+      width: var(--sidebar); flex-shrink: 0;
+      background: var(--glass); backdrop-filter: blur(8px);
+      border-right: 1px solid var(--border2);
+      padding: 1.25rem 1rem;
+      overflow-y: auto; max-height: calc(100vh - 52px);
+      position: sticky; top: 52px;
+    }
+    .sidebar-section { margin-bottom: 1.5rem; }
+    .sidebar-title {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--teal2); margin-bottom: 0.65rem;
+    }
+    .search-input {
+      width: 100%; background: rgba(7,17,31,0.7);
+      border: 1px solid var(--border2); border-radius: 7px;
+      color: var(--text); font-size: 0.82rem; padding: 0.5rem 0.75rem;
+      outline: none; transition: border-color 0.2s;
+      margin-bottom: 0.5rem;
+    }
+    .search-input:focus { border-color: var(--teal); }
+    .search-input::placeholder { color: var(--text2); opacity: 0.6; }
+    .filter-list { list-style: none; max-height: 240px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--blue2) transparent; }
+    .filter-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.3rem 0.4rem; border-radius: 5px; cursor: pointer;
+      font-size: 0.82rem; transition: background 0.1s;
+      user-select: none;
+    }
+    .filter-item:hover { background: rgba(0,201,167,0.07); }
+    .filter-item input[type=checkbox] { accent-color: var(--teal); cursor: pointer; }
+    .filter-item.active { color: var(--teal); }
+    .btn-clear {
+      background: none; border: 1px solid var(--border2); border-radius: 5px;
+      color: var(--text2); cursor: pointer; font-size: 0.72rem;
+      padding: 0.25rem 0.6rem; margin-top: 0.5rem; transition: color 0.15s;
+    }
+    .btn-clear:hover { color: var(--teal); border-color: var(--border); }
+
+    /* MAIN */
+    .main { flex: 1; padding: 1.25rem 1.5rem; min-width: 0; }
+    .toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .sort-select {
+      background: rgba(7,17,31,0.7); border: 1px solid var(--border2); border-radius: 7px;
+      color: var(--text); font-size: 0.82rem; padding: 0.4rem 0.75rem; outline: none;
+    }
+
+    /* GRID */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .card-item {
+      background: var(--glass); border: 1px solid var(--border2);
+      border-radius: 12px; overflow: hidden; cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .card-item:hover {
+      transform: translateY(-3px); border-color: var(--teal);
+      box-shadow: 0 6px 24px var(--glow);
+    }
+    .card-thumb {
+      width: 100%; aspect-ratio: 3/4; object-fit: cover;
+      background: var(--bg2); display: block;
+    }
+    .card-body { padding: 0.65rem 0.75rem; }
+    .card-player { font-size: 0.88rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+    .card-team { font-size: 0.72rem; color: var(--teal); font-weight: 600; margin-top: 0.15rem; }
+    .card-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; }
+    .card-price { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .card-year { font-size: 0.7rem; color: var(--text2); }
+
+    /* LIST */
+    .cards-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .list-item {
+      background: var(--glass); border: 1px solid var(--border2);
+      border-radius: 10px; display: flex; align-items: center; gap: 1rem;
+      padding: 0.75rem 1rem; cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .list-item:hover { border-color: var(--teal); box-shadow: 0 0 14px var(--glow); }
+    .list-thumb {
+      width: 52px; height: 72px; object-fit: cover; border-radius: 6px;
+      flex-shrink: 0; background: var(--bg2);
+    }
+    .list-info { flex: 1; min-width: 0; }
+    .list-title { font-size: 0.82rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.2rem; }
+    .list-player { font-size: 0.95rem; font-weight: 700; }
+    .list-sub { font-size: 0.75rem; color: var(--teal); margin-top: 0.15rem; }
+    .list-price { font-size: 0.95rem; font-weight: 700; flex-shrink: 0; }
+
+    /* PAGINATION */
+    .pagination { display: flex; gap: 0.5rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap; }
+    .page-btn {
+      background: rgba(7,17,31,0.7); border: 1px solid var(--border2); border-radius: 7px;
+      color: var(--text2); cursor: pointer; font-size: 0.82rem; padding: 0.4rem 0.75rem;
+      transition: all 0.15s; min-width: 36px;
+    }
+    .page-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .page-btn.active { background: var(--metal1); border-color: transparent; color: #fff; font-weight: 700; }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 4rem 2rem; color: var(--text2); }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty h3 { font-size: 1.1rem; color: var(--text); margin-bottom: 0.5rem; }
+
+    /* SCRAPE PROGRESS */
+    .scrape-progress {
+      background: rgba(0,201,167,0.06); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+      display: none;
+    }
+    .progress-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 4px; height: 4px; margin: 0.5rem 0; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--metal1); border-radius: 4px; transition: width 0.3s; width: 0%; }
+    .progress-msg { font-size: 0.78rem; color: var(--text2); }
+
+    /* LIGHTBOX */
+    .lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1000; align-items:center; justify-content:center; flex-direction:column; gap:1rem; }
+    .lightbox.active { display:flex; }
+    .lightbox img { max-width:90vw; max-height:75vh; border-radius:12px; object-fit:contain; }
+    .lightbox-info { text-align:center; }
+    .lightbox-player { font-size:1.1rem; font-weight:700; color:var(--teal); }
+    .lightbox-meta { font-size:0.82rem; color:var(--text2); margin-top:0.25rem; }
+    .lightbox-close { position:fixed; top:1rem; right:1.25rem; background:none; border:none; color:var(--text2); font-size:1.5rem; cursor:pointer; }
+
+    @media (max-width: 700px) {
+      :root { --sidebar: 200px; }
+      aside { width: 200px; }
+      .cards-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    }
+    @media (max-width: 500px) {
+      .layout { flex-direction: column; }
+      aside { width: 100%; max-height: none; position: static; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="/" style="text-decoration:none"><div class="logo">VINTED <span>CARD</span></div></a>
+    <a href="/" class="nav-link">← Analyser une annonce</a>
+  </div>
+  <div class="header-right">
+    <span class="count-badge" id="countBadge">— cartes</span>
+    <button class="view-btn active" id="btnGrid" title="Grille" onclick="setView('grid')">⊞</button>
+    <button class="view-btn" id="btnList" title="Liste" onclick="setView('list')">☰</button>
+    <button class="btn-scrape-catalog" id="btnScrape" onclick="startScrape()">🔄 Scraper Vinted</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Équipe</div>
+      <input class="search-input" id="teamSearch" placeholder="Rechercher…" oninput="filterSidebar('team', this.value)" />
+      <ul class="filter-list" id="teamList"></ul>
+      <button class="btn-clear" onclick="clearFilter('team')">Tout effacer</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Joueur</div>
+      <input class="search-input" id="playerSearch" placeholder="Rechercher…" oninput="filterSidebar('player', this.value)" />
+      <ul class="filter-list" id="playerList"></ul>
+      <button class="btn-clear" onclick="clearFilter('player')">Tout effacer</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="scrape-progress" id="scrapeProgress">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.82rem;font-weight:600;color:var(--teal)">Scrape en cours…</span>
+        <span id="scrapeStats" style="font-size:0.75rem;color:var(--text2)"></span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-msg" id="progressMsg"></div>
+    </div>
+
+    <div id="cardsContainer"></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="" />
+  <div class="lightbox-info">
+    <div class="lightbox-player" id="lightboxPlayer"></div>
+    <div class="lightbox-meta" id="lightboxMeta"></div>
+  </div>
+</div>
+
+<script>
+  const API = '';
+  let state = { view: 'grid', page: 1, team: null, player: null, total: 0, pages: 1 };
+  let filters = { teams: [], players: [] };
+
+  // --- Init ---
+  async function init() {
+    await loadFilters();
+    await loadCards();
+  }
+
+  async function loadFilters() {
+    try {
+      const r = await fetch(`${API}/api/cards/filters`);
+      filters = await r.json();
+      renderSidebar('team', filters.teams);
+      renderSidebar('player', filters.players);
+    } catch {}
+  }
+
+  async function loadCards() {
+    const params = new URLSearchParams({ page: state.page, limit: 48 });
+    if (state.team)   params.set('team',   state.team);
+    if (state.player) params.set('player', state.player);
+
+    try {
+      const r = await fetch(`${API}/api/cards?${params}`);
+      const data = await r.json();
+      state.total = data.total;
+      state.pages = data.pages;
+      document.getElementById('countBadge').textContent = `${data.total} carte${data.total !== 1 ? 's' : ''}`;
+      renderCards(data.cards);
+      renderPagination(data.page, data.pages);
+    } catch (e) {
+      document.getElementById('cardsContainer').innerHTML =
+        `<div class="empty"><div class="empty-icon">⚠</div><h3>Erreur de chargement</h3><p>${e.message}</p></div>`;
+    }
+  }
+
+  // --- Render ---
+  function renderCards(cards) {
+    const container = document.getElementById('cardsContainer');
+    if (!cards.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">🃏</div><h3>Aucune carte trouvée</h3><p>Lance un scrape Vinted ou ajuste les filtres.</p></div>`;
+      return;
+    }
+
+    if (state.view === 'grid') {
+      container.innerHTML = `<div class="cards-grid">${cards.map(gridCard).join('')}</div>`;
+    } else {
+      container.innerHTML = `<div class="cards-list">${cards.map(listCard).join('')}</div>`;
+    }
+  }
+
+  function gridCard(c) {
+    const img = c.photo_url || (c.photo_urls?.[0] ?? '');
+    const price = c.price ? `${c.price} ${c.currency || '€'}` : '';
+    return `
+      <div class="card-item" onclick="openLightbox(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+        ${img ? `<img class="card-thumb" src="${esc(img)}" alt="${esc(c.player_name)}" loading="lazy" />` : `<div class="card-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:2rem">🃏</div>`}
+        <div class="card-body">
+          <div class="card-player">${esc(c.player_name || '—')}</div>
+          <div class="card-team">${teamDisplay(c)}</div>
+          <div class="card-meta">
+            <span class="card-price">${esc(price)}</span>
+            <span class="card-year">${esc(c.year || '')}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function listCard(c) {
+    const img = c.photo_url || (c.photo_urls?.[0] ?? '');
+    const price = c.price ? `${c.price} ${c.currency || '€'}` : '';
+    const sub = [teamDisplay(c), c.position, c.year].filter(Boolean).join(' · ');
+    return `
+      <div class="list-item" onclick="openLightbox(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+        ${img ? `<img class="list-thumb" src="${esc(img)}" alt="" loading="lazy" />` : `<div class="list-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2)">🃏</div>`}
+        <div class="list-info">
+          <div class="list-title">${esc(c.title || '')}</div>
+          <div class="list-player">${esc(c.player_name || '—')}</div>
+          <div class="list-sub">${esc(sub)}</div>
+        </div>
+        <div class="list-price">${esc(price)}</div>
+      </div>`;
+  }
+
+  // --- Sidebar ---
+  function renderSidebar(type, items) {
+    const listId = type === 'team' ? 'teamList' : 'playerList';
+    const ul = document.getElementById(listId);
+    ul.innerHTML = items.map(v => `
+      <li class="filter-item" onclick="toggleFilter('${type}', '${esc(v)}')">
+        <input type="checkbox" id="${type}_${esc(v)}" />
+        <label for="${type}_${esc(v)}" style="cursor:pointer;flex:1">${esc(v)}</label>
+      </li>`).join('');
+  }
+
+  function filterSidebar(type, search) {
+    const listId = type === 'team' ? 'teamList' : 'playerList';
+    const source = type === 'team' ? filters.teams : filters.players;
+    const filtered = search ? source.filter(v => v.toLowerCase().includes(search.toLowerCase())) : source;
+    renderSidebar(type, filtered);
+    // Restore active checkbox
+    const active = type === 'team' ? state.team : state.player;
+    if (active) {
+      const cb = document.getElementById(`${type}_${active}`);
+      if (cb) cb.checked = true;
+    }
+  }
+
+  function toggleFilter(type, value) {
+    const cb = document.getElementById(`${type}_${value}`);
+    const current = type === 'team' ? state.team : state.player;
+    if (current === value) {
+      if (cb) cb.checked = false;
+      type === 'team' ? state.team = null : state.player = null;
+    } else {
+      // Uncheck previous
+      if (current) { const prev = document.getElementById(`${type}_${current}`); if (prev) prev.checked = false; }
+      if (cb) cb.checked = true;
+      type === 'team' ? state.team = value : state.player = value;
+    }
+    state.page = 1;
+    loadCards();
+  }
+
+  function clearFilter(type) {
+    const current = type === 'team' ? state.team : state.player;
+    if (current) { const cb = document.getElementById(`${type}_${current}`); if (cb) cb.checked = false; }
+    type === 'team' ? state.team = null : state.player = null;
+    state.page = 1;
+    loadCards();
+  }
+
+  // --- View toggle ---
+  function setView(v) {
+    state.view = v;
+    document.getElementById('btnGrid').classList.toggle('active', v === 'grid');
+    document.getElementById('btnList').classList.toggle('active', v === 'list');
+    loadCards();
+  }
+
+  // --- Pagination ---
+  function renderPagination(page, pages) {
+    if (pages <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+    const wrap = document.getElementById('pagination');
+    let html = `<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>‹</button>`;
+    for (let p = Math.max(1, page-2); p <= Math.min(pages, page+2); p++) {
+      html += `<button class="page-btn ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    }
+    html += `<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>›</button>`;
+    wrap.innerHTML = html;
+  }
+
+  function goPage(p) { state.page = p; loadCards(); window.scrollTo(0,0); }
+
+  // --- Catalog scrape ---
+  async function startScrape() {
+    const btn = document.getElementById('btnScrape');
+    const progress = document.getElementById('scrapeProgress');
+    btn.disabled = true;
+    progress.style.display = 'block';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressMsg').textContent = 'Connexion…';
+
+    // Check auth before opening SSE stream
+    const check = await fetch(`${API}/api/catalog/check`);
+    if (!check.ok) {
+      const err = await check.json();
+      progress.style.display = 'block';
+      document.getElementById('progressMsg').textContent = err.detail || 'Erreur';
+      document.getElementById('progressMsg').style.color = '#f87171';
+      btn.disabled = false;
+      return;
+    }
+
+    const es = new EventSource(`${API}/api/catalog/scrape?pages=3`);
+    es.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      document.getElementById('scrapeStats').textContent = `${d.saved ?? 0} sauvegardées · ${d.errors ?? 0} erreurs · ${d.total ?? 0} vues`;
+      document.getElementById('progressMsg').textContent = d.message ?? '';
+      if (d.total) document.getElementById('progressBar').style.width = Math.min(100, (d.saved / Math.max(d.total, 1)) * 100) + '%';
+      if (d.done) {
+        es.close();
+        btn.disabled = false;
+        document.getElementById('progressBar').style.width = '100%';
+        document.getElementById('progressMsg').textContent = `Terminé — ${d.saved} cartes sauvegardées.`;
+        loadFilters();
+        loadCards();
+        setTimeout(() => { progress.style.display = 'none'; }, 4000);
+      }
+    };
+    es.onerror = () => {
+      es.close();
+      btn.disabled = false;
+      document.getElementById('progressMsg').textContent = 'Erreur de connexion SSE.';
+    };
+  }
+
+  // --- Lightbox ---
+  function openLightbox(card) {
+    const img = card.photo_url || card.photo_urls?.[0] || '';
+    document.getElementById('lightboxImg').src = img;
+    document.getElementById('lightboxPlayer').textContent = card.player_name || '—';
+    const teamParts = [card.team, card.current_team && card.current_team !== card.team ? `→ ${card.current_team}` : ''].filter(Boolean).join(' ');
+    const meta = [teamParts || card.current_team, card.position, card.year, card.price ? `${card.price} ${card.currency||'€'}` : ''].filter(Boolean).join(' · ');
+    document.getElementById('lightboxMeta').textContent = meta;
+    document.getElementById('lightbox').classList.add('active');
+  }
+  function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+  function teamDisplay(c) {
+    const card = c.team || '';
+    const current = c.current_team || '';
+    if (!card && !current) return '';
+    if (!card) return esc(current);
+    if (!current || card === current) return esc(card);
+    // Different — show both
+    return `${esc(card)} <span style="color:var(--text2);font-size:0.65em">→ ${esc(current)}</span>`;
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>

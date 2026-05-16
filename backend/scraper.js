@@ -61,7 +61,7 @@ function extractSeller(user = {}) {
 
 function mapItem(data, url) {
   return {
-    id: String(data.id ?? ""),
+    id: String(data.id ?? extractItemId(url) ?? ""),
     title: (data.title ?? "").replace(/\s*[\|–-]\s*Vinted\s*$/i, "").trim(),
     description: data.description ?? "",
     price: data.price ?? "",

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="card-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00c9a7"/>
+      <stop offset="55%" stop-color="#0891b2"/>
+      <stop offset="100%" stop-color="#0e4d6e"/>
+    </linearGradient>
+    <linearGradient id="card-grad2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00a388"/>
+      <stop offset="100%" stop-color="#075f80"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="32" height="32" rx="5" fill="#07111f"/>
+
+  <!-- Back card (offset) -->
+  <rect x="11" y="8" width="14" height="19" rx="2" fill="url(#card-grad2)" opacity="0.55"/>
+
+  <!-- Front card -->
+  <rect x="7" y="5" width="14" height="19" rx="2" fill="url(#card-grad)"/>
+
+  <!-- Card shine -->
+  <rect x="7" y="5" width="14" height="7" rx="2" fill="white" opacity="0.12"/>
+
+  <!-- Card image area (dark rectangle) -->
+  <rect x="9" y="7" width="10" height="8" rx="1" fill="#07111f" opacity="0.45"/>
+
+  <!-- Card stripes (data lines) -->
+  <rect x="9" y="17" width="10" height="1.2" rx="0.6" fill="white" opacity="0.35"/>
+  <rect x="9" y="19.5" width="7" height="1" rx="0.5" fill="white" opacity="0.22"/>
+  <rect x="9" y="21.5" width="5" height="1" rx="0.5" fill="white" opacity="0.15"/>
+</svg>
