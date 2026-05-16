@@ -153,7 +153,12 @@
     .card-player { font-size: 0.88rem; font-weight: 700; color: var(--text); line-height: 1.2; }
     .card-team { font-size: 0.72rem; color: var(--teal); font-weight: 600; margin-top: 0.15rem; }
     .card-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; }
-    .card-price { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .card-price {
+      font-size: 0.9rem; font-weight: 800; color: var(--teal);
+      background: rgba(0,201,167,0.1); border: 1px solid rgba(0,201,167,0.25);
+      border-radius: 5px; padding: 0.1rem 0.45rem;
+    }
+    .card-price-empty { font-size: 0.72rem; color: var(--text2); font-style: italic; }
     .card-year { font-size: 0.7rem; color: var(--text2); }
 
     /* LIST */
@@ -332,9 +337,13 @@
     }
   }
 
+  function priceTag(c) {
+    if (!c.price) return `<span class="card-price-empty">Prix inconnu</span>`;
+    return `<span class="card-price">${esc(c.price)} ${esc(c.currency || '€')}</span>`;
+  }
+
   function gridCard(c) {
     const img = c.photo_url || (c.photo_urls?.[0] ?? '');
-    const price = c.price ? `${c.price} ${c.currency || '€'}` : '';
     return `
       <div class="card-item" onclick="openLightbox(${JSON.stringify(c).replace(/"/g,'&quot;')})">
         ${img ? `<img class="card-thumb" src="${esc(img)}" alt="${esc(c.player_name)}" loading="lazy" />` : `<div class="card-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:2rem">🃏</div>`}
@@ -342,7 +351,7 @@
           <div class="card-player">${esc(c.player_name || '—')}</div>
           <div class="card-team">${teamDisplay(c)}</div>
           <div class="card-meta">
-            <span class="card-price">${esc(price)}</span>
+            ${priceTag(c)}
             <span class="card-year">${esc(c.year || '')}</span>
           </div>
         </div>
@@ -351,7 +360,6 @@
 
   function listCard(c) {
     const img = c.photo_url || (c.photo_urls?.[0] ?? '');
-    const price = c.price ? `${c.price} ${c.currency || '€'}` : '';
     const sub = [teamDisplay(c), c.position, c.year].filter(Boolean).join(' · ');
     return `
       <div class="list-item" onclick="openLightbox(${JSON.stringify(c).replace(/"/g,'&quot;')})">
@@ -361,7 +369,7 @@
           <div class="list-player">${esc(c.player_name || '—')}</div>
           <div class="list-sub">${esc(sub)}</div>
         </div>
-        <div class="list-price">${esc(price)}</div>
+        <div class="list-price">${c.price ? `${esc(c.price)} ${esc(c.currency||'€')}` : '<span style="color:var(--text2);font-size:0.75rem;font-style:italic">—</span>'}</div>
       </div>`;
   }
 
@@ -484,7 +492,8 @@
     document.getElementById('lightboxImg').src = img;
     document.getElementById('lightboxPlayer').textContent = card.player_name || '—';
     const teamParts = [card.team, card.current_team && card.current_team !== card.team ? `→ ${card.current_team}` : ''].filter(Boolean).join(' ');
-    const meta = [teamParts || card.current_team, card.position, card.year, card.price ? `${card.price} ${card.currency||'€'}` : ''].filter(Boolean).join(' · ');
+    const priceStr = card.price ? `${card.price} ${card.currency||'€'}` : '';
+    const meta = [teamParts || card.current_team, card.position, card.year, priceStr].filter(Boolean).join(' · ');
     document.getElementById('lightboxMeta').textContent = meta;
     document.getElementById('lightbox').classList.add('active');
   }

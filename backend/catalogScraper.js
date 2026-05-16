@@ -74,11 +74,17 @@ async function fetchCatalogItems(baseUrl, searchText, page) {
     const titleLower = rawSlug.replace(/-/g, " ").trim();
     const title = titleLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
+    // Extract price from surrounding DOM text (grandparent contains price text)
+    const surroundText = $(el).parent().parent().text();
+    const priceMatch = surroundText.match(/(\d+[,.]?\d*)\s*€/);
+    const price = priceMatch ? priceMatch[1].replace(",", ".") : null;
+
     items.push({
       id,
       title,
       url: `${baseUrl}/items/${id}${rawSlug ? "-" + rawSlug : ""}`,
       photo_url: preloadImgs[itemIdx] ?? null,
+      price,
     });
     itemIdx++;
   });
@@ -182,12 +188,12 @@ export async function scrapeNFLCatalog({ baseUrl = "https://www.vinted.fr", maxP
 
       // Pre-filter by cardParser + playerMatcher using slug title
       const candidates = [];
-      for (const { id, title, url, photo_url } of newItems) {
+      for (const { id, title, url, photo_url, price } of newItems) {
         const card = parseCard(title, "");
         const sport = (card.sport ?? "nfl").toLowerCase();
         const playerMatch = await findPlayer(card.player, sport);
         if (playerMatch && playerMatch.confidence >= 0.55) {
-          candidates.push({ id, title, url, photo_url, card, playerMatch });
+          candidates.push({ id, title, url, photo_url, price, card, playerMatch });
         }
       }
 
@@ -195,7 +201,7 @@ export async function scrapeNFLCatalog({ baseUrl = "https://www.vinted.fr", maxP
       onProgress?.({ done: false, saved, errors, total, message: `${candidates.length} joueurs identifiés — sauvegarde…` });
 
       // Save directly — photo_url already extracted from catalog HTML
-      for (const { id, title, url, photo_url, card, playerMatch } of candidates) {
+      for (const { id, title, url, photo_url, price, card, playerMatch } of candidates) {
         try {
           upsertCard({
             vinted_id:   id,
@@ -208,7 +214,7 @@ export async function scrapeNFLCatalog({ baseUrl = "https://www.vinted.fr", maxP
             year:        card.year  ?? null,
             series:      card.series,
             variants:    card.variants,
-            price:       null,
+            price:       price ?? null,
             currency:    "EUR",
             photo_url:   photo_url ?? null,
             photo_urls:  photo_url ? [photo_url] : [],
