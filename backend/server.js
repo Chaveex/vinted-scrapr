@@ -174,4 +174,5 @@ app.get("/gallery", (_, res) => res.sendFile(join(__dirname, "..", "frontend", "
 
 app.listen(PORT, () => {
   console.log(`Server running → http://localhost:${PORT}`);
+  console.log(`[env] DATA_DIR=${process.env.DATA_DIR ?? "(not set — using local data/)"}`);
 });
