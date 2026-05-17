@@ -1,0 +1,17 @@
+# Dependencies
+backend/node_modules/
+
+# Generated / lock files
+backend/package-lock.json
+
+# Database (user data, binary)
+data/
+
+# Credentials
+.env
+
+# Temp debug/test scripts
+backend/test-*.js
+
+# Claude internal
+.claude/
