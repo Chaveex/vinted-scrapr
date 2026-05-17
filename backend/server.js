@@ -63,6 +63,13 @@ app.get("/api/scrape", async (req, res) => {
   }
 });
 
+// Feature flags — read by frontend on load
+app.get("/api/config", (_, res) => {
+  res.json({
+    ai_enabled: !!process.env.ANTHROPIC_API_KEY,
+  });
+});
+
 // --- Cards DB endpoints ---
 
 // List cards with filters

@@ -760,6 +760,17 @@
 <script>
   const API_BASE = '';
   let _currentCard = null;
+  let _aiEnabled = true;
+
+  // Check AI availability on load — hide analyze buttons if disabled
+  fetch('/api/config').then(r => r.json()).then(cfg => {
+    _aiEnabled = cfg.ai_enabled;
+    if (!_aiEnabled) {
+      document.querySelectorAll('.btn-analyze-photo, .btn-analyze-all').forEach(b => {
+        b.style.display = 'none';
+      });
+    }
+  }).catch(() => {});
 
   async function scrape() {
     const url = document.getElementById('urlInput').value.trim();
@@ -795,6 +806,9 @@
     _currentCard = data.card;
     renderCardInfo(data.card, data.listing, data.player_match);
     renderListing(data.listing);
+    if (!_aiEnabled) {
+      document.querySelectorAll('.btn-analyze-photo, .btn-analyze-all').forEach(b => b.style.display = 'none');
+    }
     document.getElementById('result').style.display = 'block';
   }
 
