@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import { parseCard } from "./cardParser.js";
 import { findPlayer } from "./playerMatcher.js";
 import { upsertCard } from "./db.js";
+import { normalizeTeam } from "./teamNormalizer.js";
 
 const NFL_TEAMS = [
   "Cardinals", "Falcons", "Ravens", "Bills", "Panthers", "Bears",
@@ -12,15 +13,6 @@ const NFL_TEAMS = [
   "Titans", "Commanders",
 ];
 
-const TEAM_ABBR = {
-  ARI:"Cardinals", ATL:"Falcons", BAL:"Ravens", BUF:"Bills", CAR:"Panthers",
-  CHI:"Bears", CIN:"Bengals", CLE:"Browns", DAL:"Cowboys", DEN:"Broncos",
-  DET:"Lions", GB:"Packers", HOU:"Texans", IND:"Colts", JAX:"Jaguars",
-  KC:"Chiefs", LA:"Rams", LAC:"Chargers", LV:"Raiders", MIA:"Dolphins",
-  MIN:"Vikings", NE:"Patriots", NO:"Saints", NYG:"Giants", NYJ:"Jets",
-  PHI:"Eagles", PIT:"Steelers", SF:"49ers", SEA:"Seahawks", TB:"Buccaneers",
-  TEN:"Titans", WAS:"Commanders",
-};
 
 const NFL_KEYWORDS = new Set([
   "nfl", "football", "touchdown", "quarterback", "rookie", "panini",
@@ -207,8 +199,8 @@ export async function scrapeNFLCatalog({ baseUrl = "https://www.vinted.fr", maxP
             vinted_id:   id,
             title,
             player_name: playerMatch.full_name,
-            team:         card.team ?? null,
-            current_team: TEAM_ABBR[playerMatch.team] ?? playerMatch.team ?? null,
+            team:         normalizeTeam(card.team),
+            current_team: normalizeTeam(playerMatch.team),
             position:    playerMatch.position ?? null,
             sport:       card.sport ?? "NFL",
             year:        card.year  ?? null,

@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { normalizeTeam } from "./teamNormalizer.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = resolve(__dirname, "..", "data", "cards.db");
@@ -46,6 +47,22 @@ db.exec(`
 
 // Migration: add current_team if missing (non-destructive)
 try { db.exec(`ALTER TABLE cards ADD COLUMN current_team TEXT`); } catch { /* already exists */ }
+
+// Migration: normalize existing dirty team/current_team values
+{
+  const rows = db.prepare(`SELECT id, team, current_team FROM cards`).all();
+  const update = db.prepare(`UPDATE cards SET team = ?, current_team = ? WHERE id = ?`);
+  const run = db.transaction(() => {
+    for (const row of rows) {
+      const t  = normalizeTeam(row.team);
+      const ct = normalizeTeam(row.current_team);
+      if (t !== row.team || ct !== row.current_team) {
+        update.run(t, ct, row.id);
+      }
+    }
+  });
+  run();
+}
 
 // Prepared statements
 const stmtUpsert = db.prepare(`

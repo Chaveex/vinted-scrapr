@@ -8,6 +8,7 @@ import { analyzeCardPhoto, analyzeCardPhotos } from "./photoAnalyzer.js";
 import { findPlayer } from "./playerMatcher.js";
 import { upsertCard, listCards, getFilters } from "./db.js";
 import { scrapeNFLCatalog } from "./catalogScraper.js";
+import { normalizeTeam } from "./teamNormalizer.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -25,15 +26,7 @@ try {
   }
 } catch { /* .env is optional */ }
 
-const TEAM_ABBR = {
-  ARI:"Cardinals", ATL:"Falcons", BAL:"Ravens", BUF:"Bills", CAR:"Panthers",
-  CHI:"Bears", CIN:"Bengals", CLE:"Browns", DAL:"Cowboys", DEN:"Broncos",
-  DET:"Lions", GB:"Packers", HOU:"Texans", IND:"Colts", JAX:"Jaguars",
-  KC:"Chiefs", LA:"Rams", LAC:"Chargers", LV:"Raiders", MIA:"Dolphins",
-  MIN:"Vikings", NE:"Patriots", NO:"Saints", NYG:"Giants", NYJ:"Jets",
-  PHI:"Eagles", PIT:"Steelers", SF:"49ers", SEA:"Seahawks", TB:"Buccaneers",
-  TEN:"Titans", WAS:"Commanders",
-};
+
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -94,8 +87,8 @@ app.post("/api/cards/save", express.json(), (req, res) => {
     vinted_id:   listing.id,
     title:       listing.title,
     player_name: player_match?.full_name ?? card?.player,
-    team:         card?.team ?? null,
-    current_team: TEAM_ABBR[player_match?.team] ?? player_match?.team ?? null,
+    team:         normalizeTeam(card?.team),
+    current_team: normalizeTeam(player_match?.team),
     position:    player_match?.position,
     sport:       card?.sport ?? "NFL",
     year:        card?.year,
