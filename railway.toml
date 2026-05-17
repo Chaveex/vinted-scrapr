@@ -7,3 +7,7 @@ startCommand = "cd backend && node server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
+
+# Persistent SQLite — add a Railway Volume mounted at /data
+# then set env var DATA_DIR=/data in Railway service settings
+# Without this, cards.db is wiped on every redeploy

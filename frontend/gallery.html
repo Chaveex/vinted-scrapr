@@ -159,7 +159,20 @@
       border-radius: 5px; padding: 0.1rem 0.45rem;
     }
     .card-price-empty { font-size: 0.72rem; color: var(--text2); font-style: italic; }
+    .card-price-archived { font-size: 0.75rem; color: var(--text2); font-style: italic; }
     .card-year { font-size: 0.7rem; color: var(--text2); }
+    .listings-badge {
+      display: inline-block;
+      background: rgba(8,145,178,0.15); border: 1px solid rgba(8,145,178,0.35);
+      border-radius: 4px; color: var(--teal2); font-size: 0.62rem; font-weight: 700;
+      padding: 0.1rem 0.35rem; margin-left: 0.3rem; vertical-align: middle;
+    }
+    .archived-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 4px; color: var(--text2); font-size: 0.62rem;
+      padding: 0.1rem 0.35rem; margin-left: 0.3rem; vertical-align: middle;
+    }
 
     /* LIST */
     .cards-list { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -341,8 +354,17 @@
   }
 
   function priceTag(c) {
+    if (c.listing_active === 0) {
+      const p = c.price ? `${esc(c.price)} ${esc(c.currency || '€')}` : '—';
+      return `<span class="card-price-archived">${p} <span class="archived-badge">archivé</span></span>`;
+    }
     if (!c.price) return `<span class="card-price-empty">Prix inconnu</span>`;
     return `<span class="card-price">${esc(c.price)} ${esc(c.currency || '€')}</span>`;
+  }
+
+  function listingsBadge(c) {
+    if ((c.listing_count ?? 1) > 1) return `<span class="listings-badge">${c.listing_count} annonces</span>`;
+    return '';
   }
 
   function gridCard(c) {
@@ -351,7 +373,7 @@
       <div class="card-item" onclick="openLightbox(${JSON.stringify(c).replace(/"/g,'&quot;')})">
         ${img ? `<img class="card-thumb" src="${esc(img)}" alt="${esc(c.player_name)}" loading="lazy" />` : `<div class="card-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:2rem">🃏</div>`}
         <div class="card-body">
-          <div class="card-player">${esc(c.player_name || '—')}</div>
+          <div class="card-player">${esc(c.player_name || '—')}${listingsBadge(c)}</div>
           <div class="card-team">${teamDisplay(c)}</div>
           <div class="card-meta">
             ${priceTag(c)}
@@ -364,15 +386,18 @@
   function listCard(c) {
     const img = c.photo_url || (c.photo_urls?.[0] ?? '');
     const sub = [teamDisplay(c), c.position, c.year].filter(Boolean).join(' · ');
+    const priceHtml = c.listing_active === 0
+      ? `<span style="color:var(--text2);font-size:0.75rem;font-style:italic">archivé</span>`
+      : (c.price ? `${esc(c.price)} ${esc(c.currency||'€')}` : '<span style="color:var(--text2);font-size:0.75rem;font-style:italic">—</span>');
     return `
       <div class="list-item" onclick="openLightbox(${JSON.stringify(c).replace(/"/g,'&quot;')})">
         ${img ? `<img class="list-thumb" src="${esc(img)}" alt="" loading="lazy" />` : `<div class="list-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2)">🃏</div>`}
         <div class="list-info">
           <div class="list-title">${esc(c.title || '')}</div>
-          <div class="list-player">${esc(c.player_name || '—')}</div>
+          <div class="list-player">${esc(c.player_name || '—')}${listingsBadge(c)}</div>
           <div class="list-sub">${esc(sub)}</div>
         </div>
-        <div class="list-price">${c.price ? `${esc(c.price)} ${esc(c.currency||'€')}` : '<span style="color:var(--text2);font-size:0.75rem;font-style:italic">—</span>'}</div>
+        <div class="list-price">${priceHtml}</div>
       </div>`;
   }
 
@@ -499,9 +524,16 @@
     const meta = [teamParts || card.current_team, card.position, card.year, priceStr].filter(Boolean).join(' · ');
     document.getElementById('lightboxMeta').textContent = meta;
     const link = document.getElementById('lightboxLink');
-    if (card.vinted_url) {
+    if (card.vinted_url && card.listing_active !== 0) {
       link.href = card.vinted_url;
+      const label = (card.listing_count ?? 1) > 1 ? `Voir sur Vinted (meilleur prix) ↗` : `Voir sur Vinted ↗`;
+      link.textContent = label;
       link.style.display = 'inline-block';
+    } else if (card.vinted_url && card.listing_active === 0) {
+      link.href = card.vinted_url;
+      link.textContent = 'Annonce expirée ↗';
+      link.style.display = 'inline-block';
+      link.style.opacity = '0.45';
     } else {
       link.style.display = 'none';
     }
