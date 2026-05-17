@@ -280,6 +280,9 @@
   <div class="lightbox-info">
     <div class="lightbox-player" id="lightboxPlayer"></div>
     <div class="lightbox-meta" id="lightboxMeta"></div>
+    <a id="lightboxLink" href="#" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:none;margin-top:0.75rem;background:var(--metal1);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:0.85rem;font-weight:700;letter-spacing:0.04em;padding:0.55rem 1.4rem;text-decoration:none;box-shadow:0 2px 12px rgba(0,201,167,0.35);transition:opacity 0.15s">
+      Voir sur Vinted ↗
+    </a>
   </div>
 </div>
 
@@ -495,6 +498,13 @@
     const priceStr = card.price ? `${card.price} ${card.currency||'€'}` : '';
     const meta = [teamParts || card.current_team, card.position, card.year, priceStr].filter(Boolean).join(' · ');
     document.getElementById('lightboxMeta').textContent = meta;
+    const link = document.getElementById('lightboxLink');
+    if (card.vinted_url) {
+      link.href = card.vinted_url;
+      link.style.display = 'inline-block';
+    } else {
+      link.style.display = 'none';
+    }
     document.getElementById('lightbox').classList.add('active');
   }
   function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
